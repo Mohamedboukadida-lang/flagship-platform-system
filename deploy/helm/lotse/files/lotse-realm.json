@@ -1,0 +1,111 @@
+{
+  "realm": "lotse",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 28800,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "clients": [
+    {
+      "clientId": "lotse-console",
+      "name": "Lotse console",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["${LOTSE_CONSOLE_URL}/*"],
+      "webOrigins": ["${LOTSE_CONSOLE_URL}"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "${LOTSE_CONSOLE_URL}/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "lotse-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "lotse-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "lotse-cli",
+      "name": "Lotse CLI (password grant for smoke tests; remove before real users exist)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "lotse-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "lotse-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "6f1c8a52-3b0e-4d7a-9c41-2e5f7a1b0c01",
+      "username": "alice",
+      "email": "alice@acme.example",
+      "firstName": "Alice",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "${LOTSE_DEMO_PASSWORD}", "temporary": false }]
+    },
+    {
+      "id": "6f1c8a52-3b0e-4d7a-9c41-2e5f7a1b0c02",
+      "username": "bob",
+      "email": "bob@acme.example",
+      "firstName": "Bob",
+      "lastName": "Approver",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "${LOTSE_DEMO_PASSWORD}", "temporary": false }]
+    },
+    {
+      "id": "6f1c8a52-3b0e-4d7a-9c41-2e5f7a1b0c03",
+      "username": "carol",
+      "email": "carol@acme.example",
+      "firstName": "Carol",
+      "lastName": "Member",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "${LOTSE_DEMO_PASSWORD}", "temporary": false }]
+    },
+    {
+      "id": "6f1c8a52-3b0e-4d7a-9c41-2e5f7a1b0c04",
+      "username": "dave",
+      "email": "dave@globex.example",
+      "firstName": "Dave",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "${LOTSE_DEMO_PASSWORD}", "temporary": false }]
+    }
+  ]
+}

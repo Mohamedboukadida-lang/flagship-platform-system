@@ -1,0 +1,70 @@
+# Local development stack. Credentials come from .env (copy .env.example).
+# The object store (spec: MinIO) and Ollama join when their milestones start (M1, M2).
+name: lotse
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: lotse
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?copy .env.example to .env}
+      LOTSE_APP_DB_PASSWORD: ${LOTSE_APP_DB_PASSWORD:?}
+      LOTSE_PLATFORM_DB_PASSWORD: ${LOTSE_PLATFORM_DB_PASSWORD:?}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?}
+    ports: ["127.0.0.1:5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/helm/lotse/files/init-db.sh:/docker-entrypoint-initdb.d/10-init-db.sh:ro
+    healthcheck:
+      # -h forces TCP: the socket answers during first-start init, TCP only once it is done.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d lotse"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports: ["127.0.0.1:6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  keycloak:
+    image: keycloak/keycloak:26.4
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?}
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_HEALTH_ENABLED: "true"
+      # Substituted into the realm file at import.
+      LOTSE_CONSOLE_URL: ${LOTSE_CONSOLE_URL:?}
+      LOTSE_DEMO_PASSWORD: ${LOTSE_DEMO_PASSWORD:?}
+    ports: ["127.0.0.1:8080:8080"]
+    volumes:
+      - ./deploy/helm/lotse/files/lotse-realm.json:/opt/keycloak/data/import/lotse-realm.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # The image has no curl; bash can open the management port itself.
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /auth/health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '"status": "UP"' <&3
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+
+volumes:
+  pgdata: {}
