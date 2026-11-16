@@ -1,0 +1,47 @@
+# Secrets and local config (never commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+kubeconfig*
+secrets*.y*ml
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.coverage
+htmlcov/
+build/
+*.egg-info/
+
+# Node
+node_modules/
+console/dist/
+playwright-report/
+test-results/
+
+# Terraform (keep .terraform.lock.hcl committed)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+*.tfvars
+!*.tfvars.example
+
+# Helm
+deploy/helm/**/charts/*.tgz
+
+# Local data and tooling
+.data/
+*.log
+.DS_Store
+.idea/
+.vscode/
