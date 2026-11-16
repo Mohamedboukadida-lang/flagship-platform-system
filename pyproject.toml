@@ -42,6 +42,7 @@ packages = ["backend/src/lotse"]
 line-length = 100
 target-version = "py312"
 src = ["backend/src", "backend/tests"]
+extend-exclude = ["docs"]   # the spec holds reference sketches, not code to format
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "S", "SIM", "ASYNC", "RUF", "C4", "PT", "T20"]
