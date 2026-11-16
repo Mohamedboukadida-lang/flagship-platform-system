@@ -6,7 +6,7 @@ What has landed on `main`. Newest entry first. One entry per working session: wh
 
 | Milestone | Dates | Status | Exit gate |
 | --- | --- | --- | --- |
-| M0 Walking skeleton | 16 Nov to 29 Nov 2026 | In progress (repo prepared) | A logged-in request returns the caller's tenant on the public URL; isolation suite runs in CI |
+| M0 Walking skeleton | 16 Nov to 29 Nov 2026 | Code complete, verified locally; not deployed | A logged-in request returns the caller's tenant on the public URL; isolation suite runs in CI |
 | M1 Documents and ingestion | 30 Nov to 13 Dec | Not started | A 50-page PDF becomes searchable; killing the worker mid-ingest loses nothing |
 | M2 Gateway, RAG and chat | 14 Dec to 20 Dec, 4 Jan to 17 Jan 2027 | Not started | Golden set baseline and ablation table for four retrieval modes |
 | M3 Console v1 | 18 Jan to 31 Jan | Not started | End-to-end test: log in, upload, ask, click a citation |
@@ -19,6 +19,26 @@ What has landed on `main`. Newest entry first. One entry per working session: wh
 Buffers (catch-up only): 21 Dec to 3 Jan, 15 Feb to 21 Feb.
 
 ## Log
+
+### 2026-11-16 · M0 · walking skeleton, all nine slices
+
+Landed on the branch `m0-walking-skeleton`:
+
+| Slice | What | Evidence from this session |
+| --- | --- | --- |
+| 1 Tooling | `pyproject.toml`, `uv.lock`, `Makefile` | `make check`: ruff, mypy strict, 3 import contracts, 32 unit tests |
+| 2 Local stack | `compose.yaml`: Postgres, Redis, Keycloak | All three healthy; Keycloak issued a token with the right audience and user id |
+| 3 CI | `ci.yml`: checks, tests, image build, Terraform and Helm checks | See the Actions tab for the branch |
+| 4 Core | Settings, problem+json errors, UUIDv7, tracing, request id, health | Unit tests; `/readyz` returns 503 naming the failed store |
+| 5 Schema | Roles, `tenants`, `users`, `memberships`, forced RLS | 26 isolation tests as the runtime roles; 4 of them prove the gate fails on an unprotected table |
+| 6 Auth | RS256 validation, `Principal`, `GET /v1/me` | 14 integration tests; end to end with a real Keycloak login |
+| 7 Image and chart | `api.Dockerfile`, `deploy/helm/lotse` | Image built and run as uid 10001; `helm lint`; every container run with the chart's settings in Docker, login succeeded |
+| 8 Terraform and deploy | `deploy/terraform`, `deploy.yml`, release and smoke scripts | `fmt`, `validate`, 3 mocked plan tests, checkov 120 passed and 0 failed; smoke script tested locally. **Never applied to AWS** |
+| 9 ADRs | `docs/decisions/0001` to `0004` | Written |
+
+Not verified: anything that needs an AWS account or a Kubernetes cluster. The chart was never installed on a cluster (kind could not start in the build sandbox), and the node bootstrap, the release document and `deploy.yml` have never run. The M0 exit gate (login on the public URL) is therefore still open; the steps are in `docs/runbooks/demo-deploy.md`.
+
+Problems hit are in `docs/what-broke.md`.
 
 ### 2026-11-16 · M0 · spec and owner decisions
 

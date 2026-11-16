@@ -2,30 +2,41 @@
 
 What is not done yet, in order. When an item lands on `main`, move it to `docs/progress.md`.
 
-## M0 slices (draft, confirm or reorder before starting)
+## To close M0
 
 Exit gate: a logged-in request returns the caller's tenant on the public URL; the isolation suite runs in CI.
 
-| # | Slice | Acceptance check |
+1. Review and merge the branch `m0-walking-skeleton`.
+2. First deployment, by the owner, following `docs/runbooks/demo-deploy.md`: state bucket, `terraform apply`, fill the secret, GitHub variables and the `demo` environment.
+3. Run `deploy/smoke.sh` against the public URL with `SMOKE_PASSWORD` set. That is the gate.
+4. Commit the `.terraform.lock.hcl` files created by the first `terraform init`.
+
+Expect step 2 to need fixes. These parts have never run: the node's first-boot script (k3s, Helm and cert-manager on Ubuntu 24.04), the release document, `deploy.yml`, the chart on a real cluster (hooks, probes, ingress, certificate).
+
+## Known gaps in M0, on purpose
+
+| Gap | Why | When |
 | --- | --- | --- |
-| 1 | Tooling: `pyproject.toml`, `uv.lock`, linter, type-checker, pytest, `Makefile` with `setup` and `check` | `make check` passes on a clean clone |
-| 2 | `compose.yaml`: Postgres with pgvector, Redis, MinIO, Keycloak | `make up` brings every service to healthy |
-| 3 | `ci.yml`: lint, types, unit tests on every push | Green run on `main` |
-| 4 | `core`: settings, typed errors as problem+json, UUIDv7 ids, tracing; `/healthz`, `/readyz` | Unit tests; `/readyz` fails when Postgres is down |
-| 5 | Schema baseline: roles, `tenants`, `users`, `memberships`, RLS helpers, Alembic | Isolation tests: no tenant context reads zero rows; a table with `tenant_id` and no policy fails the suite |
-| 6 | Auth: Keycloak realm, JWT validation, `Principal`, `GET /v1/me` | Integration test: valid token returns the tenant; wrong tenant returns 403; bad token returns 401 |
-| 7 | Images and Helm chart for API and worker | Chart installs on a local cluster; `/readyz` is 200 |
-| 8 | Terraform: state bootstrap, network, k3s instance, GitHub OIDC deploy role; `deploy.yml` | `/v1/me` answers on the public URL; no stored AWS keys |
-| 9 | ADRs 0001 to 0004 (monolith, RLS tenancy, Keycloak, k3s) | Files in `docs/decisions/` |
+| No object store locally or in AWS | Nothing uses it yet; MinIO no longer publishes its image on Docker Hub | M1 |
+| No backups | The demo holds seed data only | M1, with the scheduler |
+| Pods cannot use AWS credentials (metadata hop limit 1) | Nothing in a pod calls AWS yet | M1, for S3 |
+| Secret synced by the release script, not External Secrets Operator | One operator less on a small node | M8 or earlier |
+| `lotse-cli` client allows the password grant | Needed for smoke tests and `curl` | Remove before real users |
+| No rate limiting, idempotency keys or audit log | Not part of the M0 slice list | M1 and M2 |
+| CI has no gitleaks, dependency audit or image scan | Kept the first pipeline small | M8, or sooner |
+| GitHub Actions pinned by tag, not by commit SHA | The SHAs could not be looked up from the build sandbox | Next CI change |
+| k3s channel and cert-manager chart not pinned to exact versions | Unknown until the first apply | After the first apply |
+| No HTTP to HTTPS redirect, no network policies | Hardening | M8 |
+| No worker process | No jobs yet | M1 |
 
-## Later milestones
+## M1: documents and ingestion (30 Nov to 13 Dec)
 
-M1 to M8 are listed with dates and exit gates in `docs/progress.md`. Each gets its own slice list here when it starts.
+Spec section 8. Write the slice list here before starting. Exit gate: a 50-page PDF becomes searchable; killing the worker mid-ingest loses nothing.
 
 Cut order if time runs short: MCP server, router, semantic cache, memory, forensics diff.
 
 ## Repo housekeeping (optional, small)
 
-- Branch protection on `main` once CI exists
+- Branch protection on `main` with `ci` required
 - Pull request template
 - Secret scanning and Dependabot in the repository settings

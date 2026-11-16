@@ -8,10 +8,45 @@ _Last verified: 2026-11-16. If something here contradicts the code, the code win
 
 ## State of the repo
 
-Scaffold only. There is no code, no CI and no infrastructure yet, so there are **no commands to run**. Add a command to this file only after it has run successfully.
+M0 (walking skeleton) is code complete and verified locally. It has **not** been applied to AWS: the Terraform, the deploy workflow and the node scripts are statically checked only.
 
-- What is done: `docs/progress.md`
-- What is next, plus open decisions: `docs/pending.md`
+- What is done, with evidence: `docs/progress.md`
+- What is next, and what is unverified: `docs/pending.md`
+- Decisions: `docs/decisions/`. Problems hit: `docs/what-broke.md`. First deployment: `docs/runbooks/demo-deploy.md`
+
+## Commands
+
+All run from the repository root and were verified on 2026-11-16.
+
+| Task | Command |
+| --- | --- |
+| Install | `make setup` (also creates `.env` from `.env.example`) |
+| Lint, format check, types, import contracts, unit tests | `make check` |
+| Format | `make fmt` |
+| Start Postgres, Redis, Keycloak | `make up` (needs Docker) |
+| Integration and isolation tests | `make test-int` (needs `make up`) |
+| One test file or case | `uv run pytest backend/tests/unit/test_ids.py`, add `-k name` |
+| Migrations | `make migrate` |
+| Demo tenants and users | `make seed` |
+| Run the API | `make run`, then `http://localhost:8000/docs` |
+| Smoke test, local | `API_URL=http://localhost:8000 AUTH_URL=http://localhost:8080/auth SMOKE_PASSWORD=demo_dev deploy/smoke.sh` |
+| Chart | `helm lint deploy/helm/lotse -f deploy/helm/lotse/ci-values.yaml` |
+| Terraform | `terraform fmt -check -recursive deploy/terraform`, then `validate` and `test` in `envs/demo` |
+
+CI (`.github/workflows/ci.yml`) runs `make check`, `make test-int`, an image build, and the Terraform and Helm checks. A change is acceptable only when these pass.
+
+Package manager: **uv** only. Python 3.12. Exact versions are in `uv.lock`; change dependencies with `uv add` or `uv lock`, never by editing the lock.
+
+Local demo users (password from `LOTSE_DEMO_PASSWORD` in `.env`): `alice` (admin), `bob` (approver), `carol` (member) in tenant `acme`; `dave` (admin) in `globex`.
+
+## Hazards
+
+- The tests drop and recreate a database named `lotse_test` on the Postgres at `127.0.0.1:5432`. They never touch `lotse`.
+- `docker compose down -v` deletes the local database.
+- Migrations and the seed connect as the Postgres superuser, which bypasses row-level security. Never use that connection in a request path.
+- Role passwords are set once, when the Postgres volume is first created. Changing them in `.env` afterwards does nothing.
+- `ruff format` reformats Python blocks in Markdown; `docs/` is excluded for that reason.
+- The API is served under `LOTSE_API_PREFIX` (`/api` in the cluster, empty locally). `/healthz` and `/readyz` always exist without the prefix.
 
 ## Spec
 
@@ -35,11 +70,13 @@ Also: 1 overview and quality targets, 2 flows, 3 component catalog, 17 build pla
 
 Code in the spec is a reference sketch. Check every library call against the pinned version before using it, especially LangGraph, sqlglot, the MCP SDK and OpenTelemetry.
 
-## Planned stack (from the spec; nothing installed yet)
+## Stack
 
-Python 3.12 with uv, FastAPI, Pydantic v2, SQLAlchemy 2 async, Alembic, PostgreSQL 16 with pgvector, Redis 7, S3 (MinIO locally), Keycloak (OIDC), LangGraph, React with TypeScript and Vite, Helm on k3s, Terraform on AWS.
+In use: Python 3.12 with uv, FastAPI, Pydantic v2, SQLAlchemy 2 async on asyncpg, Alembic, PostgreSQL 16 (pgvector image), Redis 7, Keycloak 26, OpenTelemetry, Helm, Terraform with the AWS provider 6.
 
-## Target layout (create a directory when its first real file lands)
+Planned by the spec, not installed yet: an S3-compatible object store, LangGraph, the React console, Ollama.
+
+## Layout (directories without files yet are created when their first real file lands)
 
 ```
 backend/src/lotse/   main.py (API), worker.py (jobs), settings.py
@@ -62,8 +99,8 @@ docs/                decisions/ (ADRs), runbooks/, progress.md, pending.md
 - Modular monolith: one API image, one worker image, shared packages, one PostgreSQL database.
 - `service.py` holds logic, takes a database session and a `Principal`, and imports no web framework. `api.py` is a thin router.
 - Modules call each other through `service.py` functions only, never through each other's tables.
-- Only `llm/` talks to model endpoints. Only `core/db.py` creates sessions. Both enforced by import-linter in CI.
-- Every table carries `tenant_id` with a forced row-level security policy, except `tenants` and the platform tables listed in spec section 5. A new tenant table ships with its policy and an isolation test in the same change.
+- Only `llm/` talks to model endpoints. Only `core/db.py` creates sessions. Enforced by import-linter contracts in `pyproject.toml`; add one for `llm/` when it lands.
+- Every table carries `tenant_id` with a forced row-level security policy named `tenant_isolation`, except `tenants` and the platform tables listed in spec section 5. Platform tables get no grant to `lotse_app`; they are reached through `SECURITY DEFINER` functions granted to `lotse_platform` (ADR 0002). A new tenant table ships with its policy and an isolation test in the same change.
 - Tenant context is set in exactly one place (the tenant session factory), transaction-local.
 - The API never does slow work: anything over a few seconds becomes a job. Jobs are at-least-once, so every handler is idempotent.
 - PostgreSQL is the only source of truth. Redis is disposable.
@@ -78,7 +115,8 @@ docs/                decisions/ (ADRs), runbooks/, progress.md, pending.md
 - Least-privilege IAM. Flag and justify any wildcard.
 - CI reaches AWS through GitHub OIDC. No stored cloud keys.
 - Never run Terraform or the AWS CLI with root credentials.
-- State lives in a bucket created by `deploy/terraform/bootstrap/` (local state). Never destroy it.
+- State lives in a bucket created by `deploy/terraform/bootstrap/` (local state). Never destroy it. The bucket name holds the account id, so it is passed with `-backend-config` and never committed.
+- Secret values never enter Terraform state: Terraform creates the secret, a person fills it.
 - Cost: budget alarm, one instance, stopped outside demo hours. `terraform destroy` on `envs/demo` is fine; the buckets and the KMS key carry `prevent_destroy`.
 
 ## Working agreement
