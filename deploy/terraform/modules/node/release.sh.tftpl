@@ -1,0 +1,39 @@
+# Runs on the node as root, through the Systems Manager document. ACTION and SHA are set above.
+set -euo pipefail
+export PATH="$PATH:/snap/bin:/usr/local/bin"
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+export AWS_DEFAULT_REGION=${region}
+NAMESPACE=lotse
+
+if [ "$ACTION" = "rollback" ]; then
+  helm rollback lotse --namespace "$NAMESPACE" --wait --timeout 5m
+  exit 0
+fi
+
+kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+
+# Application secrets: Secrets Manager is the source, the cluster holds a copy.
+# The value passes through a pipe only; it is never written to disk or to the log.
+aws secretsmanager get-secret-value --secret-id ${secret_name} --query SecretString --output text \
+  | python3 -c 'import json, sys; print(json.dumps({"apiVersion": "v1", "kind": "Secret", "metadata": {"name": "lotse-secrets"}, "stringData": json.load(sys.stdin)}))' \
+  | kubectl apply --namespace "$NAMESPACE" -f - > /dev/null
+echo "application secret synced"
+
+# Registry credentials for the kubelet (pull) and for Helm (chart). ECR tokens last 12 hours.
+PASSWORD="$(aws ecr get-login-password)"
+kubectl create secret docker-registry ecr-pull --namespace "$NAMESPACE" \
+  --docker-server=${registry} --docker-username=AWS --docker-password="$PASSWORD" \
+  --dry-run=client -o yaml | kubectl apply -f - > /dev/null
+echo "$PASSWORD" | helm registry login --username AWS --password-stdin ${registry}
+
+kubectl wait --for=condition=Established crd/clusterissuers.cert-manager.io --timeout=300s
+kubectl apply -f /opt/lotse/cluster-issuer.yaml
+
+# --atomic: if the pods do not become ready, the release rolls back to the previous one.
+helm upgrade --install lotse oci://${registry}/charts/lotse --version "0.1.0-sha-$SHA" \
+  --namespace "$NAMESPACE" --atomic --timeout 10m \
+  --set host=${host} \
+  --set image.repository=${registry}/lotse-api \
+  --set image.tag="$SHA" \
+  --set 'imagePullSecrets[0].name=ecr-pull' \
+  --set seed.enabled=true

@@ -1,0 +1,10 @@
+# Copy to terraform.tfvars (not committed) and fill in.
+github_repo = "Mohamedboukadida-lang/flagship-platform-system"
+alert_email = "you@example.org"
+
+# If this account already has the GitHub OIDC provider (for example from another project):
+# existing_github_oidc_provider_arn = "arn:aws:iam::<account-id>:oidc-provider/token.actions.githubusercontent.com"
+
+# With your own domain; leave both out to get <elastic-ip>.sslip.io instead:
+# domain_name     = "demo.example.org"
+# route53_zone_id = "Z..."

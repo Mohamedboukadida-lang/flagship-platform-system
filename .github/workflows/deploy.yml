@@ -1,0 +1,84 @@
+name: deploy
+
+# Deploys main to the demo node after ci succeeds. Does nothing until the infrastructure
+# exists, that is until the AWS_DEPLOY_ROLE_ARN repository variable is set
+# (docs/runbooks/demo-deploy.md).
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  id-token: write   # OIDC to AWS; no stored cloud keys
+  contents: read
+
+concurrency:
+  group: deploy-demo
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      vars.AWS_DEPLOY_ROLE_ARN != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: demo   # the AWS role trusts this environment only; restrict it to main
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha }}
+      NODE_INSTANCE_ID: ${{ vars.NODE_INSTANCE_ID }}
+      RELEASE_DOCUMENT: ${{ vars.RELEASE_DOCUMENT }}
+      DEMO_HOST: ${{ vars.DEMO_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: eu-central-1
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+
+      # Tags are immutable, so a re-run for the same commit must not push again.
+      - name: Build and push the image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          IMAGE="$REGISTRY/lotse-api:$SHA"
+          if docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
+            echo "image for $SHA is already in the registry"
+          else
+            docker build -f deploy/docker/api.Dockerfile -t "$IMAGE" .
+            docker push "$IMAGE"
+          fi
+
+      - name: Package and push the chart
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          VERSION="0.1.0-sha-$SHA"
+          aws ecr get-login-password | helm registry login --username AWS --password-stdin "$REGISTRY"
+          if helm show chart "oci://$REGISTRY/charts/lotse" --version "$VERSION" > /dev/null 2>&1; then
+            echo "chart $VERSION is already in the registry"
+          else
+            helm package deploy/helm/lotse --version "$VERSION" --app-version "$SHA" --destination dist
+            helm push "dist/lotse-$VERSION.tgz" "oci://$REGISTRY/charts"
+          fi
+
+      - name: Release on the node through Systems Manager
+        run: ./deploy/release.sh deploy "$SHA"
+
+      - name: Smoke test
+        id: smoke
+        env:
+          SMOKE_PASSWORD: ${{ secrets.DEMO_PASSWORD }}   # optional: adds a logged-in check
+        run: ./deploy/smoke.sh "https://$DEMO_HOST"
+
+      - name: Roll back if the smoke test failed
+        if: failure() && steps.smoke.conclusion == 'failure'
+        run: ./deploy/release.sh rollback "$SHA"
