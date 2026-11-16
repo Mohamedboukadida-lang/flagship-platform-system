@@ -32,4 +32,8 @@ A multi-tenant, privacy-first AI assistant platform. A company signs up, uploads
 
 ## Working in this repo
 
-Rules for contributors and coding agents are in [AGENTS.md](AGENTS.md).
+Rules for contributors and coding agents are in [AGENTS.md](AGENTS.md). The full design is in [docs/system-design.md](docs/system-design.md).
+
+## License
+
+[MIT](LICENSE)

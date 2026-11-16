@@ -2,14 +2,6 @@
 
 What is not done yet, in order. When an item lands on `main`, move it to `docs/progress.md`.
 
-## Decisions needed from the owner
-
-1. **Commit the design spec?** This repo is public. The spec is the build reference, but its build-plan section has personal planning notes (weekly hours, schedule risks, a CV line). Options: commit as is, commit without those notes, or keep it out. Until decided it is supplied per session.
-2. **Name.** "Lotse" is a working name. It gets baked into the Python package (`lotse`), the env prefix (`LOTSE_`) and the database roles, so confirm it before the first code.
-3. **License.** None yet, which means all rights reserved.
-4. **Cost rule for the demo.** The earlier project rule was `terraform destroy` after every session. The spec wants the demo live from week two, with the instance stopped outside demo hours and a budget alarm. Pick one.
-5. **Terraform state.** New bootstrap bucket for this project, or reuse an existing one.
-
 ## M0 slices (draft, confirm or reorder before starting)
 
 Exit gate: a logged-in request returns the caller's tenant on the public URL; the isolation suite runs in CI.

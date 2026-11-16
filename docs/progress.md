@@ -20,6 +20,12 @@ Buffers (catch-up only): 21 Dec to 3 Jan, 15 Feb to 21 Feb.
 
 ## Log
 
+### 2026-11-16 · M0 · spec and owner decisions
+
+- Landed: `docs/system-design.md` (the spec, personal planning notes removed), `LICENSE`.
+- Decided by the owner: the name stays Lotse; MIT license; a new state bucket for this project; the demo stays deployed with a budget alarm and the instance stopped outside demo hours.
+- Verified: the spec copy differs from the original only in the byline, two wording changes, the hours column and two removed lines.
+
 ### 2026-11-16 · M0 · repository prepared
 
 - Landed: `AGENTS.md` (agent and project rules), `CLAUDE.md` (pointer to it), `README.md`, `.gitignore`, `.editorconfig`, `docs/progress.md`, `docs/pending.md`.

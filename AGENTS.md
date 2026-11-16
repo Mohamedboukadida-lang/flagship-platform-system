@@ -15,7 +15,7 @@ Scaffold only. There is no code, no CI and no infrastructure yet, so there are *
 
 ## Spec
 
-The build specification is the system design document (17 sections). It is not committed yet (see `docs/pending.md`, decision 1); until then the owner supplies it per session. Target path: `docs/system-design.md`.
+The build specification is `docs/system-design.md` (17 sections).
 
 Do not read the whole spec (about 50k tokens). Grep `^## ` for headings and read only the section for the current slice.
 
@@ -78,7 +78,8 @@ docs/                decisions/ (ADRs), runbooks/, progress.md, pending.md
 - Least-privilege IAM. Flag and justify any wildcard.
 - CI reaches AWS through GitHub OIDC. No stored cloud keys.
 - Never run Terraform or the AWS CLI with root credentials.
-- Never destroy the state bucket.
+- State lives in a bucket created by `deploy/terraform/bootstrap/` (local state). Never destroy it.
+- Cost: budget alarm, one instance, stopped outside demo hours. `terraform destroy` on `envs/demo` is fine; the buckets and the KMS key carry `prevent_destroy`.
 
 ## Working agreement
 
