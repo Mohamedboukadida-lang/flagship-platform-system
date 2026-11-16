@@ -1,0 +1,88 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  check:
+    name: Lint, types, import contracts, unit tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: make setup
+      - run: make check
+
+  test:
+    name: Integration and isolation tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres_dev   # throwaway CI database
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U postgres"
+          --health-interval 3s --health-timeout 3s --health-retries 30
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s --health-timeout 3s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: make setup
+      - run: make test-int
+
+  image:
+    name: Build the API image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f deploy/docker/api.Dockerfile -t lotse-api:ci .
+      - name: The image imports the app, knows its migrations and runs as non-root
+        run: |
+          docker run --rm lotse-api:ci python -c "import lotse.main"
+          docker run --rm lotse-api:ci alembic -c backend/alembic.ini heads
+          test "$(docker run --rm lotse-api:ci id -u)" = "10001"
+
+  infra:
+    name: Terraform and Helm static checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.2
+      - run: terraform fmt -check -recursive deploy/terraform
+      - name: terraform validate
+        run: |
+          for root in deploy/terraform/bootstrap deploy/terraform/envs/demo; do
+            terraform -chdir="$root" init -backend=false -input=false
+            terraform -chdir="$root" validate
+          done
+      - name: terraform test (every provider call is mocked; needs no AWS account)
+        run: terraform -chdir=deploy/terraform/envs/demo test
+      - name: helm lint and render
+        run: |
+          helm lint deploy/helm/lotse -f deploy/helm/lotse/ci-values.yaml
+          helm template lotse deploy/helm/lotse -f deploy/helm/lotse/ci-values.yaml > /dev/null
