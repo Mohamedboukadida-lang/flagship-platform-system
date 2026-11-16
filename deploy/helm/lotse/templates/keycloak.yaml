@@ -1,0 +1,86 @@
+{{- if .Values.keycloak.enabled }}
+{{- $name := include "lotse.name" . -}}
+{{- $url := include "lotse.publicUrl" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-keycloak-realm
+  labels: {{- include "lotse.labels" (dict "ctx" . "component" "keycloak") | nindent 4 }}
+data:
+  lotse-realm.json: | {{- .Files.Get "files/lotse-realm.json" | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}-keycloak
+  labels: {{- include "lotse.labels" (dict "ctx" . "component" "keycloak") | nindent 4 }}
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: {{- include "lotse.selector" (dict "ctx" . "component" "keycloak") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "lotse.labels" (dict "ctx" . "component" "keycloak") | nindent 8 }}
+      annotations:
+        checksum/realm: {{ .Files.Get "files/lotse-realm.json" | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000      # the keycloak user of the image
+        runAsGroup: 0
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: keycloak
+          image: {{ .Values.keycloak.image | quote }}
+          args: ["start", "--import-realm"]
+          ports:
+            - { containerPort: 8080, name: http }
+            - { containerPort: 9000, name: management }
+          env:
+            - { name: KC_DB, value: postgres }
+            - { name: KC_DB_URL, value: "jdbc:postgresql://{{ include "lotse.dbHost" . }}:5432/keycloak" }
+            - { name: KC_DB_USERNAME, value: keycloak }
+            {{- include "lotse.secretEnv" (dict "ctx" . "key" "KEYCLOAK_DB_PASSWORD" "name" "KC_DB_PASSWORD") | nindent 12 }}
+            - { name: KC_BOOTSTRAP_ADMIN_USERNAME, value: admin }
+            {{- include "lotse.secretEnv" (dict "ctx" . "key" "KEYCLOAK_ADMIN_PASSWORD" "name" "KC_BOOTSTRAP_ADMIN_PASSWORD") | nindent 12 }}
+            # TLS ends at the ingress; Keycloak trusts its X-Forwarded-* headers.
+            - { name: KC_HTTP_ENABLED, value: "true" }
+            - { name: KC_PROXY_HEADERS, value: xforwarded }
+            - { name: KC_HTTP_RELATIVE_PATH, value: /auth }
+            - { name: KC_HOSTNAME, value: "{{ $url }}/auth" }
+            - { name: KC_HEALTH_ENABLED, value: "true" }
+            - { name: JAVA_OPTS_KC_HEAP, value: "-XX:MaxRAMPercentage=65" }
+            # Substituted into the realm file at import.
+            - { name: LOTSE_CONSOLE_URL, value: {{ $url | quote }} }
+            {{- include "lotse.secretEnv" (dict "ctx" . "key" "LOTSE_DEMO_PASSWORD") | nindent 12 }}
+          securityContext:
+            {{- include "lotse.containerSecurity" . | nindent 12 }}
+          resources: {{- toYaml .Values.keycloak.resources | nindent 12 }}
+          startupProbe:
+            httpGet: { path: /auth/health/started, port: management }
+            periodSeconds: 5
+            failureThreshold: 90
+          readinessProbe:
+            httpGet: { path: /auth/health/ready, port: management }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /auth/health/live, port: management }
+            periodSeconds: 20
+            failureThreshold: 6
+          volumeMounts:
+            - { name: realm, mountPath: /opt/keycloak/data/import, readOnly: true }
+      volumes:
+        - name: realm
+          configMap: { name: {{ $name }}-keycloak-realm }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}-keycloak
+  labels: {{- include "lotse.labels" (dict "ctx" . "component" "keycloak") | nindent 4 }}
+spec:
+  selector: {{- include "lotse.selector" (dict "ctx" . "component" "keycloak") | nindent 4 }}
+  ports: [{ name: http, port: 8080, targetPort: http }]
+{{- end }}

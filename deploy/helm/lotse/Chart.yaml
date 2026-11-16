@@ -1,0 +1,6 @@
+apiVersion: v2
+name: lotse
+description: The Lotse API with its in-cluster stores (Postgres, Redis, Keycloak) for the single-node demo
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

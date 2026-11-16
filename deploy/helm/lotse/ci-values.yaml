@@ -1,0 +1,21 @@
+# Values for `helm lint`, `helm template` and throwaway local clusters. Not for a real deployment.
+host: lotse.localtest
+image:
+  repository: lotse-api
+  tag: ci
+secrets:
+  create: true
+  values:
+    POSTGRES_PASSWORD: ci_only_postgres
+    LOTSE_APP_DB_PASSWORD: ci_only_app
+    LOTSE_PLATFORM_DB_PASSWORD: ci_only_platform
+    KEYCLOAK_DB_PASSWORD: ci_only_keycloak
+    KEYCLOAK_ADMIN_PASSWORD: ci_only_admin
+    LOTSE_DEMO_PASSWORD: ci_only_demo
+api:
+  replicas: 1
+seed:
+  enabled: true
+ingress:
+  tls:
+    enabled: false

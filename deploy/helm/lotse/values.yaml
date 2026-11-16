@@ -1,0 +1,70 @@
+# Public hostname, e.g. demo.example.org. Required.
+host: ""
+# LOTSE_ENV: demo or prod.
+env: demo
+
+image:
+  repository: ""   # required, e.g. <registry>/lotse-api
+  tag: ""          # required: the commit SHA; tags are immutable
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+secrets:
+  # An existing Secret holding these keys (URL-safe values: letters, digits, underscore):
+  #   POSTGRES_PASSWORD, LOTSE_APP_DB_PASSWORD, LOTSE_PLATFORM_DB_PASSWORD,
+  #   KEYCLOAK_DB_PASSWORD, KEYCLOAK_ADMIN_PASSWORD, LOTSE_DEMO_PASSWORD
+  existingSecret: lotse-secrets
+  # Throwaway clusters only: let the chart create that Secret from `values`.
+  create: false
+  values: {}
+
+api:
+  replicas: 2
+  prefix: /api
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 512Mi }
+
+# Database migrations: a hook that runs after the first install and before every upgrade.
+migrate:
+  enabled: true
+
+# Demo tenants and members (idempotent). Off unless this is the demo.
+seed:
+  enabled: false
+
+postgres:
+  enabled: true
+  image: pgvector/pgvector:pg16
+  storage: 10Gi
+  # Host of an external database when enabled is false.
+  host: ""
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 1Gi }
+
+redis:
+  enabled: true
+  image: redis:7-alpine
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+    limits: { memory: 128Mi }
+
+keycloak:
+  enabled: true
+  image: keycloak/keycloak:26.4
+  resources:
+    requests: { cpu: 200m, memory: 768Mi }
+    limits: { memory: 1Gi }
+
+# Only needed when keycloak.enabled is false.
+oidc:
+  issuer: ""
+  jwksUrl: ""
+
+ingress:
+  enabled: true
+  className: traefik
+  tls:
+    enabled: true
+    clusterIssuer: letsencrypt

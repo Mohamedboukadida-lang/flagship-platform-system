@@ -1,0 +1,57 @@
+{{- $name := include "lotse.name" . -}}
+{{- $db := include "lotse.dbHost" . -}}
+{{- $jobs := list -}}
+{{- if .Values.migrate.enabled }}
+{{- $jobs = append $jobs (dict "id" "migrate" "hook" "post-install,pre-upgrade" "weight" "0" "command" (list "alembic" "-c" "backend/alembic.ini" "upgrade" "head")) -}}
+{{- end }}
+{{- if .Values.seed.enabled }}
+{{- $jobs = append $jobs (dict "id" "seed" "hook" "post-install,post-upgrade" "weight" "5" "command" (list "python" "-m" "lotse.seed")) -}}
+{{- end }}
+{{- range $job := $jobs }}
+---
+# Hooks: migrations run after the first install (the database is part of the release, so it
+# cannot exist earlier) and before every upgrade, so new code never meets an old schema.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $name }}-{{ $job.id }}
+  labels: {{- include "lotse.labels" (dict "ctx" $ "component" $job.id) | nindent 4 }}
+  annotations:
+    helm.sh/hook: {{ $job.hook }}
+    helm.sh/hook-weight: {{ $job.weight | quote }}
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 6          # the first install waits here for Postgres to come up
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels: {{- include "lotse.labels" (dict "ctx" $ "component" $job.id) | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ $job.id }}
+          image: {{ include "lotse.image" $ | quote }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          command: {{ toJson $job.command }}
+          env:
+            {{- include "lotse.secretEnv" (dict "ctx" $ "key" "POSTGRES_PASSWORD") | nindent 12 }}
+            - name: LOTSE_MIGRATIONS_DATABASE_URL
+              value: postgresql+asyncpg://postgres:$(POSTGRES_PASSWORD)@{{ $db }}:5432/lotse
+          securityContext:
+            {{- include "lotse.containerSecurity" $ | nindent 12 }}
+            readOnlyRootFilesystem: true
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+{{- end }}

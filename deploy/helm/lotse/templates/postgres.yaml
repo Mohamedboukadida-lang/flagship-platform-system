@@ -1,0 +1,86 @@
+{{- if .Values.postgres.enabled }}
+{{- $name := include "lotse.name" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-postgres-init
+  labels: {{- include "lotse.labels" (dict "ctx" . "component" "postgres") | nindent 4 }}
+data:
+  10-init-db.sh: | {{- .Files.Get "files/init-db.sh" | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}-postgres
+  labels: {{- include "lotse.labels" (dict "ctx" . "component" "postgres") | nindent 4 }}
+spec:
+  selector: {{- include "lotse.selector" (dict "ctx" . "component" "postgres") | nindent 4 }}
+  ports: [{ name: postgres, port: 5432, targetPort: postgres }]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $name }}-postgres
+  labels: {{- include "lotse.labels" (dict "ctx" . "component" "postgres") | nindent 4 }}
+spec:
+  serviceName: {{ $name }}-postgres
+  replicas: 1
+  selector:
+    matchLabels: {{- include "lotse.selector" (dict "ctx" . "component" "postgres") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "lotse.labels" (dict "ctx" . "component" "postgres") | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999       # the postgres user of the image
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile: { type: RuntimeDefault }
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: postgres
+          image: {{ .Values.postgres.image | quote }}
+          ports: [{ containerPort: 5432, name: postgres }]
+          env:
+            - { name: POSTGRES_DB, value: lotse }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+            {{- range $key := list "POSTGRES_PASSWORD" "LOTSE_APP_DB_PASSWORD" "LOTSE_PLATFORM_DB_PASSWORD" "KEYCLOAK_DB_PASSWORD" }}
+            {{- include "lotse.secretEnv" (dict "ctx" $ "key" $key) | nindent 12 }}
+            {{- end }}
+          securityContext:
+            {{- include "lotse.containerSecurity" . | nindent 12 }}
+            readOnlyRootFilesystem: true
+          resources: {{- toYaml .Values.postgres.resources | nindent 12 }}
+          # -h forces TCP: the socket answers during first-start init, TCP only once it is done.
+          startupProbe:
+            exec: { command: ["pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "lotse"] }
+            periodSeconds: 3
+            failureThreshold: 40
+          readinessProbe:
+            exec: { command: ["pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "lotse"] }
+            periodSeconds: 5
+          livenessProbe:
+            exec: { command: ["pg_isready", "-h", "127.0.0.1", "-U", "postgres"] }
+            periodSeconds: 10
+            failureThreshold: 6
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+            - { name: init, mountPath: /docker-entrypoint-initdb.d, readOnly: true }
+            - { name: run, mountPath: /var/run/postgresql }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: init
+          configMap: { name: {{ $name }}-postgres-init, defaultMode: 0555 }
+        - { name: run, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.postgres.storage }}
+{{- end }}

@@ -1,0 +1,19 @@
+{{- $name := include "lotse.name" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-config
+  labels: {{- include "lotse.labels" (dict "ctx" . "component" "api") | nindent 4 }}
+data:
+  LOTSE_ENV: {{ .Values.env | quote }}
+  LOTSE_API_PREFIX: {{ .Values.api.prefix | quote }}
+  LOTSE_REDIS_URL: redis://{{ $name }}-redis:6379/0
+  LOTSE_OIDC_AUDIENCE: lotse-api
+  {{- if .Values.keycloak.enabled }}
+  # The issuer is the public URL found in tokens; keys are fetched inside the cluster.
+  LOTSE_OIDC_ISSUER: {{ include "lotse.publicUrl" . }}/auth/realms/lotse
+  LOTSE_OIDC_JWKS_URL: http://{{ $name }}-keycloak:8080/auth/realms/lotse/protocol/openid-connect/certs
+  {{- else }}
+  LOTSE_OIDC_ISSUER: {{ required "oidc.issuer is required when keycloak.enabled is false" .Values.oidc.issuer | quote }}
+  LOTSE_OIDC_JWKS_URL: {{ required "oidc.jwksUrl is required when keycloak.enabled is false" .Values.oidc.jwksUrl | quote }}
+  {{- end }}
