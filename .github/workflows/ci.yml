@@ -51,6 +51,22 @@ jobs:
       - run: make setup
       - run: make test-int
 
+  security:
+    name: Secret scan and dependency audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # gitleaks scans the commits of the push, not just the tree
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: make audit
+
   image:
     name: Build the API image
     runs-on: ubuntu-24.04

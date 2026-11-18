@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup check fmt test test-int up down migrate seed run
+.PHONY: help setup check fmt audit test test-int up down migrate seed run
 
 help:  ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -18,6 +18,9 @@ check:  ## Lint, format check, types, import contracts, unit tests
 fmt:  ## Format and apply safe lint fixes
 	uv run ruff format .
 	uv run ruff check --fix .
+
+audit:  ## Check the locked runtime dependencies against known vulnerabilities
+	uv export --frozen --no-dev --no-hashes --no-emit-project -q | uvx pip-audit -r /dev/stdin --disable-pip --no-deps --progress-spinner off
 
 test-int:  ## Integration and isolation tests (need Postgres and Redis: make up)
 	uv run pytest backend/tests/integration backend/tests/isolation
