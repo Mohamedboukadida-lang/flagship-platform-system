@@ -6,10 +6,9 @@ What is not done yet, in order. When an item lands on `main`, move it to `docs/p
 
 Exit gate: a logged-in request returns the caller's tenant on the public URL; the isolation suite runs in CI.
 
-1. Review and merge the branch `m0-walking-skeleton`.
-2. First deployment, by the owner, following `docs/runbooks/demo-deploy.md`: state bucket, `terraform apply`, fill the secret, GitHub variables and the `demo` environment.
-3. Run `deploy/smoke.sh` against the public URL with `SMOKE_PASSWORD` set. That is the gate.
-4. Commit the `.terraform.lock.hcl` files created by the first `terraform init`.
+1. First deployment, by the owner, following `docs/runbooks/demo-deploy.md`: state bucket, `terraform apply`, fill the secret, GitHub variables and the `demo` environment.
+2. Run `deploy/smoke.sh` against the public URL with `SMOKE_PASSWORD` set. That is the gate.
+3. Commit the `.terraform.lock.hcl` files created by the first `terraform init`.
 
 Expect step 2 to need fixes. These parts have never run: the node's first-boot script (k3s, Helm and cert-manager on Ubuntu 24.04), the release document, `deploy.yml`, the chart on a real cluster (hooks, probes, ingress, certificate).
 

@@ -20,6 +20,10 @@ Buffers (catch-up only): 21 Dec to 3 Jan, 15 Feb to 21 Feb.
 
 ## Log
 
+### 2026-11-18 · M0 · merged to main
+
+- `m0-walking-skeleton` fast-forwarded into `main` after CI run 2 passed on every job. Deployment is still open (see `docs/pending.md`).
+
 ### 2026-11-18 · M0 · repository hygiene and M1 plan
 
 - Landed: a `security` CI job (gitleaks on the pushed commits, `make audit` with pip-audit on the locked runtime dependencies), Dependabot for uv, GitHub Actions, the Docker base image and Terraform, a pull request template, and the M1 slice list in `docs/pending.md`.
