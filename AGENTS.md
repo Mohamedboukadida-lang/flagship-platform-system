@@ -23,6 +23,7 @@ All run from the repository root and were verified on 2026-11-16.
 | Install | `make setup` (also creates `.env` from `.env.example`) |
 | Lint, format check, types, import contracts, unit tests | `make check` |
 | Format | `make fmt` |
+| Dependency audit | `make audit` |
 | Start Postgres, Redis, Keycloak | `make up` (needs Docker) |
 | Integration and isolation tests | `make test-int` (needs `make up`) |
 | One test file or case | `uv run pytest backend/tests/unit/test_ids.py`, add `-k name` |
@@ -33,7 +34,7 @@ All run from the repository root and were verified on 2026-11-16.
 | Chart | `helm lint deploy/helm/lotse -f deploy/helm/lotse/ci-values.yaml` |
 | Terraform | `terraform fmt -check -recursive deploy/terraform`, then `validate` and `test` in `envs/demo` |
 
-CI (`.github/workflows/ci.yml`) runs `make check`, `make test-int`, an image build, and the Terraform and Helm checks. A change is acceptable only when these pass.
+CI (`.github/workflows/ci.yml`) runs `make check`, `make test-int`, gitleaks and `make audit`, an image build, and the Terraform and Helm checks. A change is acceptable only when these pass.
 
 Package manager: **uv** only. Python 3.12. Exact versions are in `uv.lock`; change dependencies with `uv add` or `uv lock`, never by editing the lock.
 

@@ -20,6 +20,12 @@ Buffers (catch-up only): 21 Dec to 3 Jan, 15 Feb to 21 Feb.
 
 ## Log
 
+### 2026-11-18 · M0 · repository hygiene and M1 plan
+
+- Landed: a `security` CI job (gitleaks on the pushed commits, `make audit` with pip-audit on the locked runtime dependencies), Dependabot for uv, GitHub Actions, the Docker base image and Terraform, a pull request template, and the M1 slice list in `docs/pending.md`.
+- Verified: gitleaks over the full history found nothing (11 commits); `make audit` found no known vulnerabilities; actionlint passes on both workflows.
+- Not done: branch protection and secret scanning are repository settings only the owner can change.
+
 ### 2026-11-16 · M0 · walking skeleton, all nine slices
 
 Landed on the branch `m0-walking-skeleton`:
