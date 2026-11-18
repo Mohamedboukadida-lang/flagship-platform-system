@@ -1,0 +1,28 @@
+# Weekly update pull requests. Each one must pass ci like any other change.
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    groups:
+      python-dev:
+        dependency-type: development
+      python-runtime:
+        dependency-type: production
+        update-types: [minor, patch]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /deploy/docker
+    schedule: { interval: weekly, day: monday }
+
+  - package-ecosystem: terraform
+    directories: [/deploy/terraform/bootstrap, /deploy/terraform/envs/demo]
+    schedule: { interval: monthly }
