@@ -22,6 +22,11 @@ updates:
   - package-ecosystem: docker
     directory: /deploy/docker
     schedule: { interval: weekly, day: monday }
+    # The project is pinned to Python 3.12 (pyproject.toml); moving to a newer Python is a
+    # deliberate change, not a weekly bump. Digest refreshes of 3.12-slim still arrive.
+    ignore:
+      - dependency-name: python
+        update-types: [version-update:semver-major, version-update:semver-minor]
 
   - package-ecosystem: terraform
     directories: [/deploy/terraform/bootstrap, /deploy/terraform/envs/demo]
