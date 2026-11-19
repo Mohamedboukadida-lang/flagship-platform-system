@@ -6,4 +6,5 @@
 !backend/src
 !backend/alembic.ini
 !backend/alembic
+!backend/logging.json
 **/__pycache__

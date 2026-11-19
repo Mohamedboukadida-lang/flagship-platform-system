@@ -40,4 +40,4 @@ seed:  ## Create the two demo tenants and their members (idempotent)
 	uv run python -m lotse.seed
 
 run:  ## Run the API with reload on http://localhost:8000
-	uv run uvicorn lotse.main:create_app --factory --reload --port 8000
+	uv run uvicorn lotse.main:create_app --factory --reload --port 8000 --log-config backend/logging.json

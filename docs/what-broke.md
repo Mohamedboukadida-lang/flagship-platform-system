@@ -2,6 +2,14 @@
 
 Problems hit and how they were fixed. Newest first.
 
+## 2026-11-19 · M0
+
+**The access line could not name the route template.** In the pinned FastAPI, an included router keeps its own routes, so `scope["route"].path` is `/me`, not `/v1/me`; the prefix lives on a private class. Fix: log the request path (ids, never content), truncated to 200 characters.
+
+**The trace id was lost when a log line was formatted late.** The formatter read the current span, which is gone if a handler formats after the request (pytest's capture does; a queue handler would too). Fix: the access line stamps `request_id` and `trace_id` on the record when it is logged.
+
+**uvicorn adds a coloured copy of each message.** Its records carry `color_message` with terminal escape codes. Fix: the formatter drops that field.
+
 ## 2026-11-16 · M0
 
 **`ruff format` rewrote the design spec.** The pinned ruff formats Python code blocks inside Markdown, so `ruff format .` reflowed about 500 lines of `docs/system-design.md`. Fix: `extend-exclude = ["docs"]` in `pyproject.toml`; the spec holds reference sketches, not code to format.

@@ -1,5 +1,8 @@
 import asyncpg
 import httpx
+import pytest
+
+from lotse.core.logging import JsonFormatter
 
 from ..conftest import Jwks, World
 
@@ -119,3 +122,35 @@ async def test_missing_tenant_header_is_400(
     response = await client.get("/v1/me", headers=auth(jwks.token("sub-adam"), tenant=None))
     assert response.status_code == 400
     assert response.json()["detail"] == "X-Tenant header is required"
+
+
+async def test_access_line_names_the_tenant_and_user(
+    client: httpx.AsyncClient, jwks: Jwks, world: World, caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level("INFO", logger="lotse.access")
+    assert (await client.get("/v1/me", headers=auth(jwks.token("sub-adam")))).status_code == 200
+    [line] = [r for r in caplog.records if r.name == "lotse.access"]
+    assert line.tenant_id == str(world.tenant_a)
+    assert line.user_id == str(world.adam)
+    assert line.status == 200
+
+
+async def test_secrets_and_content_never_reach_the_log(
+    client: httpx.AsyncClient, jwks: Jwks, world: World, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Seeded-secret test (spec section 14): token, query string and body stay out of the
+    application's log lines. httpx's own client log in this test is not the API's, so it is
+    left out of the check."""
+    caplog.set_level("DEBUG")
+    seeded = "SEEDED-SECRET-5f1e0c"
+    statuses = [
+        (await client.get(f"/v1/me?q={seeded}", headers=auth(seeded))).status_code,
+        (await client.get(f"/v1/me?q={seeded}", headers=auth(jwks.token("sub-adam")))).status_code,
+        (await client.post("/v1/me", content=seeded)).status_code,
+    ]
+    assert statuses == [401, 200, 405]
+    app_records = [r for r in caplog.records if not r.name.startswith(("httpx", "httpcore"))]
+    assert len([r for r in app_records if r.name == "lotse.access"]) == 3
+    formatter = JsonFormatter()
+    for rec in app_records:
+        assert seeded not in formatter.format(rec), rec.name

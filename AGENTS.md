@@ -105,6 +105,7 @@ docs/                decisions/ (ADRs), runbooks/, progress.md, pending.md
 - Tenant context is set in exactly one place (the tenant session factory), transaction-local.
 - The API never does slow work: anything over a few seconds becomes a job. Jobs are at-least-once, so every handler is idempotent.
 - PostgreSQL is the only source of truth. Redis is disposable.
+- Logs are JSON on stdout and carry ids and counts, never content: no tokens, query strings, bodies, prompts or answers. Pass fields with `extra=`; `core/logging.py` adds `request_id` and `trace_id`.
 - Primary keys are UUIDv7 from the application. Timestamps are `timestamptz` in UTC.
 - Migrations are expand-then-contract.
 - Endpoints declare the permission they need, never the role. A row in another tenant returns 404, not 403.

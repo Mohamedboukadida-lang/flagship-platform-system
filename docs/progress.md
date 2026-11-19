@@ -20,6 +20,12 @@ Buffers (catch-up only): 21 Dec to 3 Jan, 15 Feb to 21 Feb.
 
 ## Log
 
+### 2026-11-19 · M0 · structured logs
+
+- Landed: JSON log lines on stdout (`core/logging.py`, `backend/logging.json`, loaded by uvicorn with `--log-config`), and one access line per request from `RequestContextMiddleware` with method, path, status, duration, `request_id`, `trace_id`, `tenant_id` and `user_id`. Never the query string, headers or body. Successful probes are not logged. Closes the "access log" part of the middleware in spec sections 7 and 13.
+- Deviation: the spec names structlog. The standard library's `logging` with a JSON formatter does the job without a new dependency, and the existing `logging.getLogger` calls keep working.
+- Verified: 8 new unit and 2 new integration tests, including the spec's seeded-secret test (a token, query string and body never reach an application log line). Ran uvicorn with the config and a real Keycloak login: every stdout line was JSON, the access line held the tenant, and the token and query value did not appear. The image builds and logs JSON.
+
 ### 2026-11-18 · M0 · merged to main
 
 - `m0-walking-skeleton` fast-forwarded into `main` after CI run 2 passed on every job. Deployment is still open (see `docs/pending.md`).

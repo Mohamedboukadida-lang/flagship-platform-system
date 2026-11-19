@@ -16,7 +16,8 @@ WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
 COPY backend/alembic.ini backend/alembic.ini
 COPY backend/alembic backend/alembic
+COPY backend/logging.json backend/logging.json
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 USER 10001
 EXPOSE 8000
-CMD ["uvicorn", "lotse.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--timeout-graceful-shutdown", "25"]
+CMD ["uvicorn", "lotse.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--timeout-graceful-shutdown", "25", "--log-config", "backend/logging.json"]
