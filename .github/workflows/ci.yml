@@ -43,6 +43,16 @@ jobs:
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 3s --health-timeout 3s --health-retries 30
+      objects:
+        image: rustfs/rustfs@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a
+        env:
+          RUSTFS_ACCESS_KEY: lotse_s3_dev          # throwaway CI store
+          RUSTFS_SECRET_KEY: lotse_s3_dev_secret
+          RUSTFS_CONSOLE_ENABLE: "false"
+        ports: ["9000:9000"]
+        options: >-
+          --health-cmd "curl -fsS -o /dev/null http://127.0.0.1:9000/health"
+          --health-interval 3s --health-timeout 3s --health-retries 30
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7

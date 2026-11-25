@@ -50,6 +50,11 @@ variable "secret_name" {
   type = string
 }
 
+variable "files_bucket" {
+  description = "Name of the tenant files bucket, passed to the chart"
+  type        = string
+}
+
 data "aws_ssm_parameter" "ubuntu" {
   name = "/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id"
 }
@@ -197,10 +202,11 @@ resource "aws_ssm_document" "release" {
         runCommand = concat(
           ["#!/bin/bash", "ACTION='{{ action }}'", "SHA='{{ sha }}'"],
           split("\n", templatefile("${path.module}/release.sh.tftpl", {
-            region      = var.region
-            registry    = var.registry
-            host        = local.host
-            secret_name = var.secret_name
+            region       = var.region
+            registry     = var.registry
+            host         = local.host
+            secret_name  = var.secret_name
+            files_bucket = var.files_bucket
           }))
         )
       }

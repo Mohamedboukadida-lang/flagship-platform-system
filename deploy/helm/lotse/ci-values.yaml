@@ -12,6 +12,8 @@ secrets:
     KEYCLOAK_DB_PASSWORD: ci_only_keycloak
     KEYCLOAK_ADMIN_PASSWORD: ci_only_admin
     LOTSE_DEMO_PASSWORD: ci_only_demo
+objectStore:
+  bucket: lotse-ci
 api:
   replicas: 1
 seed:

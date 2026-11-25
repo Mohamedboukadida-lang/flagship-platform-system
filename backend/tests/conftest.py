@@ -34,6 +34,10 @@ ADMIN_PASSWORD = os.environ.get("LOTSE_TEST_ADMIN_PASSWORD", "postgres_dev")
 APP_PASSWORD = os.environ.get("LOTSE_TEST_APP_PASSWORD", "lotse_app_dev")
 PLATFORM_PASSWORD = os.environ.get("LOTSE_TEST_PLATFORM_PASSWORD", "lotse_platform_dev")
 REDIS_URL = os.environ.get("LOTSE_TEST_REDIS_URL", "redis://127.0.0.1:6379/15")
+S3_URL = os.environ.get("LOTSE_TEST_S3_URL", "http://127.0.0.1:9000")
+S3_ACCESS_KEY = os.environ.get("LOTSE_TEST_S3_ACCESS_KEY", "lotse_s3_dev")
+S3_SECRET_KEY = os.environ.get("LOTSE_TEST_S3_SECRET_KEY", "lotse_s3_dev_secret")
+S3_BUCKET = "lotse-test"
 TEST_DB = "lotse_test"
 
 ISSUER = "http://issuer.test/realms/lotse"
@@ -141,6 +145,10 @@ def make_settings(jwks: Jwks, **overrides: Any) -> Settings:
         "database_url": dsn("lotse_app", APP_PASSWORD, TEST_DB, "postgresql+asyncpg"),
         "platform_database_url": dsn("lotse_platform", PLATFORM_PASSWORD, TEST_DB),
         "redis_url": REDIS_URL,
+        "s3_bucket": S3_BUCKET,
+        "s3_endpoint_url": S3_URL,
+        "s3_access_key_id": S3_ACCESS_KEY,
+        "s3_secret_access_key": S3_SECRET_KEY,
         "oidc_issuer": ISSUER,
         "oidc_jwks_url": jwks.url,
         "oidc_audience": AUDIENCE,

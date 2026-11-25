@@ -1,6 +1,14 @@
 # The demo environment: one k3s node in eu-central-1 and what it needs to be deployed to.
 # The object store, the KMS key and the backup bucket join with the milestones that use them.
 
+data "aws_caller_identity" "current" {}
+
+locals {
+  # The bucket itself, with its policy and the pods' access to it, lands with M1 slice 10.
+  # The API only needs the name to start.
+  files_bucket = "${var.name}-files-${data.aws_caller_identity.current.account_id}"
+}
+
 module "network" {
   source            = "../../modules/network"
   name              = var.name
@@ -31,6 +39,7 @@ module "node" {
   ecr_repository_arns = module.registry.repository_arns
   secret_arn          = module.secrets.arn
   secret_name         = module.secrets.name
+  files_bucket        = local.files_bucket
 }
 
 module "github_oidc" {

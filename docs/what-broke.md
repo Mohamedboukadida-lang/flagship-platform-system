@@ -2,6 +2,12 @@
 
 Problems hit and how they were fixed. Newest first.
 
+## 2026-11-25 · M1 slice 1
+
+**No MinIO image to pull.** `minio/minio` tags are gone from Docker Hub, and `quay.io` is not reachable from the build sandbox. SeaweedFS and S3Mock tags could not be pulled either. Fix: RustFS, pinned by digest, after it passed the presigned upload, checksum, range and expiry checks the platform needs.
+
+**An import-linter ignore must match a real import.** `lotse.core.storage -> botocore.*` failed with "No matches for ignored import"; the module imports `botocore.config` and `botocore.exceptions`, which the linter reports as `botocore`. Fix: ignore `lotse.core.storage -> botocore`.
+
 ## 2026-11-19 · M0
 
 **The access line could not name the route template.** In the pinned FastAPI, an included router keeps its own routes, so `scope["route"].path` is `/me`, not `/v1/me`; the prefix lives on a private class. Fix: log the request path (ids, never content), truncated to 200 characters.

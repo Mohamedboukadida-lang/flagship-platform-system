@@ -1,5 +1,5 @@
 # Local development stack. Credentials come from .env (copy .env.example).
-# The object store (spec: MinIO) and Ollama join when their milestones start (M1, M2).
+# Ollama joins in M2.
 name: lotse
 
 services:
@@ -28,6 +28,23 @@ services:
     ports: ["127.0.0.1:6379:6379"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  # S3-compatible object store for development (MinIO no longer publishes images; see
+  # docs/what-broke.md). In AWS the platform uses S3 itself.
+  objects:
+    image: rustfs/rustfs@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a  # 1.0.6
+    environment:
+      RUSTFS_ACCESS_KEY: ${LOTSE_S3_ACCESS_KEY_ID:?}
+      RUSTFS_SECRET_KEY: ${LOTSE_S3_SECRET_ACCESS_KEY:?}
+      RUSTFS_CONSOLE_ENABLE: "false"
+    ports: ["127.0.0.1:9000:9000"]
+    volumes:
+      - objects:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:9000/health"]
       interval: 3s
       timeout: 3s
       retries: 30
@@ -68,3 +85,4 @@ services:
 
 volumes:
   pgdata: {}
+  objects: {}

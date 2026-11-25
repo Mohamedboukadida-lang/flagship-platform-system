@@ -22,13 +22,14 @@ fmt:  ## Format and apply safe lint fixes
 audit:  ## Check the locked runtime dependencies against known vulnerabilities
 	uv export --frozen --no-dev --no-hashes --no-emit-project -q | uvx pip-audit -r /dev/stdin --disable-pip --no-deps --progress-spinner off
 
-test-int:  ## Integration and isolation tests (need Postgres and Redis: make up)
+test-int:  ## Integration and isolation tests (need the local stack: make up)
 	uv run pytest backend/tests/integration backend/tests/isolation
 
 test: check test-int  ## Everything
 
-up:  ## Start Postgres, Redis and Keycloak
+up:  ## Start Postgres, Redis, the object store and Keycloak; create the bucket
 	docker compose up -d --wait
+	uv run python -m lotse.core.storage ensure-bucket
 
 down:  ## Stop the local stack (keeps data; add -v by hand to wipe it)
 	docker compose down

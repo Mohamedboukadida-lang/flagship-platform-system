@@ -16,7 +16,7 @@ Expect step 2 to need fixes. These parts have never run: the node's first-boot s
 
 | Gap | Why | When |
 | --- | --- | --- |
-| No object store locally or in AWS | Nothing uses it yet; MinIO no longer publishes its image on Docker Hub | M1 |
+| No files bucket in AWS yet (local RustFS only) | Nothing uploads yet | M1 slice 10 |
 | No backups | The demo holds seed data only | M1, with the scheduler |
 | Pods cannot use AWS credentials (metadata hop limit 1) | Nothing in a pod calls AWS yet | M1, for S3 |
 | Secret synced by the release script, not External Secrets Operator | One operator less on a small node | M8 or earlier |
@@ -36,7 +36,7 @@ Draft slice list. Confirm or reorder before starting; each slice ends with its c
 
 | # | Slice | Acceptance check |
 | --- | --- | --- |
-| 1 | Object store: pick the local S3 server, add it to `compose.yaml`; `core/storage.py` with presigned PUT and GET, keys under `tenants/<tenant_id>/` | Integration test: a presigned PUT then GET round-trips; a key outside the tenant prefix is refused before any URL is minted |
+| ~~1~~ | ~~Object store~~ | Done 2026-11-25 (RustFS locally; see `docs/progress.md`) |
 | 2 | Schema: `collections`, `collection_grants`, `documents`, `document_versions`, `chunks` (with `vector(768)` and the generated `tsv`), each with forced RLS | The isolation suite picks the new tables up and passes; two-tenant read and write tests per table |
 | 3 | Job queue: `jobs` table, `core/jobs.py` with `enqueue` inside the caller's transaction, claim with `SKIP LOCKED`, lease, backoff, `dead` after the last attempt | Unit tests for backoff; integration: two workers never claim the same job; an expired lease is claimed again; a rolled-back request leaves no job |
 | 4 | Worker process `lotse.worker`: semaphore, per-kind timeout, graceful stop on SIGTERM, tenant session from the job row | Integration: SIGTERM lets the running job finish; a handler error requeues with backoff; the worker sees only the job's tenant |
@@ -47,10 +47,14 @@ Draft slice list. Confirm or reorder before starting; each slice ends with its c
 | 9 | Search check: a plain hybrid query (vector and full text) over `chunks` to prove "searchable"; the real retrieval module is M2 | A question about a fixture PDF returns its chunk first; a 50-page PDF is searchable within 60 s locally |
 | 10 | Deploy pieces: worker Deployment in the chart, S3 bucket and pod access in Terraform, ADR 0005 (job table instead of a broker) | `helm lint`, `terraform validate` and `test`; ADR written |
 
-Decisions needed before slice 1:
+Decision needed before slice 2:
 
-- **Local S3 server.** MinIO no longer publishes images on Docker Hub. Options: a pinned older MinIO tag, another S3-compatible server, or LocalStack. Recommendation: whichever passes slice 1's round-trip test with the AWS SDK, pinned by digest.
-- **Embedding model and dimension.** The schema fixes the vector size (spec sketch: 768). Pick the model before slice 2, because changing it later means re-embedding everything.
+- **Embedding model and dimension.** The schema fixes the vector size, and changing it later means re-embedding everything. Recommendation: `nomic-embed-text` in Ollama (768 dimensions, the spec's default, runs on CPU), unless the hosted EU endpoint you plan to use offers a different model.
+
+Notes for later slices:
+
+- Slice 5: `complete` can use `ObjectStore.head` to compare the stored size and SHA-256 with the registered ones; no download in the API.
+- Slice 10: create the files bucket with the name Terraform already computes (`<name>-files-<account>`), give the API and worker pods access to it, and add the object store to `/readyz`.
 
 Cut order if time runs short: MCP server, router, semantic cache, memory, forensics diff.
 

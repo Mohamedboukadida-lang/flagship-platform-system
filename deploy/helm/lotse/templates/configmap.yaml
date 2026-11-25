@@ -8,6 +8,11 @@ data:
   LOTSE_ENV: {{ .Values.env | quote }}
   LOTSE_API_PREFIX: {{ .Values.api.prefix | quote }}
   LOTSE_REDIS_URL: redis://{{ $name }}-redis:6379/0
+  LOTSE_S3_BUCKET: {{ required "objectStore.bucket is required" .Values.objectStore.bucket | quote }}
+  LOTSE_S3_REGION: {{ .Values.objectStore.region | quote }}
+  {{- with .Values.objectStore.endpointUrl }}
+  LOTSE_S3_ENDPOINT_URL: {{ . | quote }}
+  {{- end }}
   LOTSE_OIDC_AUDIENCE: lotse-api
   {{- if .Values.keycloak.enabled }}
   # The issuer is the public URL found in tokens; keys are fetched inside the cluster.

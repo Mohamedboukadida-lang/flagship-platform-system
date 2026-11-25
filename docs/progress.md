@@ -7,7 +7,7 @@ What has landed on `main`. Newest entry first. One entry per working session: wh
 | Milestone | Dates | Status | Exit gate |
 | --- | --- | --- | --- |
 | M0 Walking skeleton | 16 Nov to 29 Nov 2026 | Code complete, verified locally; not deployed | A logged-in request returns the caller's tenant on the public URL; isolation suite runs in CI |
-| M1 Documents and ingestion | 30 Nov to 13 Dec | Not started | A 50-page PDF becomes searchable; killing the worker mid-ingest loses nothing |
+| M1 Documents and ingestion | 30 Nov to 13 Dec | Slice 1 of 10 done | A 50-page PDF becomes searchable; killing the worker mid-ingest loses nothing |
 | M2 Gateway, RAG and chat | 14 Dec to 20 Dec, 4 Jan to 17 Jan 2027 | Not started | Golden set baseline and ablation table for four retrieval modes |
 | M3 Console v1 | 18 Jan to 31 Jan | Not started | End-to-end test: log in, upload, ask, click a citation |
 | M4 Quality gate and forensics | 1 Feb to 14 Feb | Not started | A worse prompt in a pull request is blocked; a failed trace becomes a test case |
@@ -19,6 +19,15 @@ What has landed on `main`. Newest entry first. One entry per working session: wh
 Buffers (catch-up only): 21 Dec to 3 Jan, 15 Feb to 21 Feb.
 
 ## Log
+
+### 2026-11-25 · dependencies and M1 slice 1 (object store)
+
+- Dependencies: the five open Dependabot updates (#3, #5, #6, #7, #8) applied in one commit so the combination was tested once: FastAPI 0.165, Pydantic 2.14.4, SQLAlchemy 2.1.9, ruff 0.17.6, import-linter 2.17. Full suite passed with SQLAlchemy deprecation warnings as errors; `make audit` clean.
+- Local object store: RustFS 1.0.6, pinned by digest, in `compose.yaml` and CI. MinIO no longer publishes images, SeaweedFS and S3Mock were not reachable, Garage needs a cluster bootstrap with no shell in its image. RustFS passed presigned PUT and GET, checksum rejection, range reads, expiry and per-key signatures before it was chosen.
+- `core/storage.py`: keys under `tenants/<tenant_id>/`, checked on every operation before anything is signed or sent; presigned PUT that signs size, type and SHA-256, so the store rejects any other body; presigned GET; `head` returns size and stored SHA-256; idempotent `delete`; `ensure_bucket` for development. `make up` creates the bucket.
+- New import-linter contract: only `core.storage` imports boto3 or botocore. Checked that a stray import breaks it.
+- Chart and release script pass the bucket name (`objectStore.bucket`, required). Terraform computes the name; the bucket itself lands with slice 10.
+- Verified: 19 new unit tests (key rules, refusal before any network call, signed headers), 4 new integration tests against RustFS (round trip, tampered body rejected, signature bound to its key, missing object and idempotent delete). `helm lint`, `terraform validate` and `test`, actionlint.
 
 ### 2026-11-19 · M0 · structured logs
 

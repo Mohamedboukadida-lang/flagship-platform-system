@@ -35,5 +35,6 @@ helm upgrade --install lotse oci://${registry}/charts/lotse --version "0.1.0-sha
   --set host=${host} \
   --set image.repository=${registry}/lotse-api \
   --set image.tag="$SHA" \
+  --set objectStore.bucket=${files_bucket} \
   --set 'imagePullSecrets[0].name=ecr-pull' \
   --set seed.enabled=true

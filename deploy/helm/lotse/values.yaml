@@ -43,6 +43,12 @@ postgres:
     requests: { cpu: 100m, memory: 256Mi }
     limits: { memory: 1Gi }
 
+# Tenant files. In AWS: the S3 bucket, reached with the workload's role (no keys).
+objectStore:
+  bucket: ""        # required
+  region: eu-central-1
+  endpointUrl: ""   # only for an S3-compatible server; empty means AWS S3
+
 redis:
   enabled: true
   image: redis:7-alpine

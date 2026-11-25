@@ -24,7 +24,7 @@ All run from the repository root and were verified on 2026-11-16.
 | Lint, format check, types, import contracts, unit tests | `make check` |
 | Format | `make fmt` |
 | Dependency audit | `make audit` |
-| Start Postgres, Redis, Keycloak | `make up` (needs Docker) |
+| Start Postgres, Redis, RustFS, Keycloak; create the bucket | `make up` (needs Docker) |
 | Integration and isolation tests | `make test-int` (needs `make up`) |
 | One test file or case | `uv run pytest backend/tests/unit/test_ids.py`, add `-k name` |
 | Migrations | `make migrate` |
@@ -46,6 +46,8 @@ Local demo users (password from `LOTSE_DEMO_PASSWORD` in `.env`): `alice` (admin
 - `docker compose down -v` deletes the local database.
 - Migrations and the seed connect as the Postgres superuser, which bypasses row-level security. Never use that connection in a request path.
 - Role passwords are set once, when the Postgres volume is first created. Changing them in `.env` afterwards does nothing.
+- `make setup` copies `.env.example` only when `.env` is missing. After pulling a change that adds variables (the `LOTSE_S3_*` ones, for example), copy the new lines yourself or `make up` fails.
+- Object keys go through `storage.object_key(tenant_id, ...)`. Never build a key by hand: every storage call checks the tenant prefix.
 - `ruff format` reformats Python blocks in Markdown; `docs/` is excluded for that reason.
 - The API is served under `LOTSE_API_PREFIX` (`/api` in the cluster, empty locally). `/healthz` and `/readyz` always exist without the prefix.
 
@@ -75,7 +77,9 @@ Code in the spec is a reference sketch. Check every library call against the pin
 
 In use: Python 3.12 with uv, FastAPI, Pydantic v2, SQLAlchemy 2 async on asyncpg, Alembic, PostgreSQL 16 (pgvector image), Redis 7, Keycloak 26, OpenTelemetry, Helm, Terraform with the AWS provider 6.
 
-Planned by the spec, not installed yet: an S3-compatible object store, LangGraph, the React console, Ollama.
+Object store: S3 in AWS, RustFS locally and in CI (boto3, only in `core/storage.py`).
+
+Planned by the spec, not installed yet: LangGraph, the React console, Ollama.
 
 ## Layout (directories without files yet are created when their first real file lands)
 

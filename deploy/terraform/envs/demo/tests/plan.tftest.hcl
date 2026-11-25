@@ -3,6 +3,9 @@
 #   terraform -chdir=deploy/terraform/envs/demo test
 
 mock_provider "aws" {
+  mock_data "aws_caller_identity" {
+    defaults = { account_id = "000000000000" }
+  }
   mock_data "aws_ssm_parameter" {
     defaults = { insecure_value = "ami-00000000000000000" }
   }
